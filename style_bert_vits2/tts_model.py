@@ -1,9 +1,9 @@
 import base64
 import io
-import json
 from pathlib import Path
 from typing import Any, Optional, Union
 
+import aivmlib
 import numpy as np
 import torch
 from numpy.typing import NDArray
@@ -512,42 +512,24 @@ class TTSModelHolder:
 
 
 def get_config_from_aivm(model_path: Path) -> tuple[HyperParameters, NDArray[Any]]:
-    # 下記コードは https://github.com/Aivis-Project/aivmlib の aivmlib/__init__.py の一部を改変したコードです。
-    # The MIT License (MIT)
-    # Copyright (c) 2024 Aivis Project
-    # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-    # The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-    # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+    """
+    aivm ファイルからハイパーパラメータとスタイルベクトルを取得する。
 
+    Args:
+        model_name (str): 音声合成モデルのパス
+
+    Returns:
+        tuple[HyperParameters, NDArray[Any]]: ハイパーパラメータとスタイルベクトル
+            - HyperParameters: ハイパーパラメータ
+            - NDArray[Any]: スタイルベクトル
+    """
     with open(model_path, "rb") as aivm_file:
-        # 引数として受け取った BinaryIO のカーソルを先頭にシーク
-        aivm_file.seek(0)
+        raw_metadata = aivmlib.read_aivm_metadata(aivm_file)
 
-        # ファイルの内容を読み込む
-        array_buffer = aivm_file.read()
-        header_size = int.from_bytes(array_buffer[:8], "little")
-
-        # 引数として受け取った BinaryIO のカーソルを再度先頭に戻す
-        aivm_file.seek(0)
-
-        # ヘッダー部分を抽出
-        header_bytes = array_buffer[8 : 8 + header_size]
-        try:
-            header_text = header_bytes.decode("utf-8")
-            header_json = json.loads(header_text)
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            raise Exception(
-                "Failed to decode AIVM metadata. This file is not an AIVM (Safetensors) file."
-            )
-
-        # "__metadata__" キーから AIVM メタデータを取得
-        raw_metadata = header_json.get("__metadata__")
-
-    vectors_base64 = base64.b64decode(raw_metadata["aivm_style_vectors"])
-    buffer = io.BytesIO(vectors_base64)
+    buffer = io.BytesIO(raw_metadata.style_vectors)
     vectors_nd = np.load(buffer)
 
     return (
-        HyperParameters.model_validate_json(raw_metadata["aivm_hyper_parameters"]),
+        HyperParameters(**raw_metadata.hyper_parameters.model_dump()),
         vectors_nd,
     )
