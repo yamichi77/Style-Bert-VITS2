@@ -54,7 +54,7 @@ class TTSModel:
         この時点ではモデルはロードされていない (明示的にロードしたい場合は model.load() を呼び出す)。
 
         Args:
-            model_path (Path): モデル (.safetensors, .avim) のパス
+            model_path (Path): モデル (.safetensors / .aivm) のパス
             config_path (Union[Path, HyperParameters]): ハイパーパラメータ (config.json) のパス (直接 HyperParameters を指定することも可能)
             style_vec_path (Union[Path, NDArray[Any]]): スタイルベクトル (style_vectors.npy) のパス (直接 NDArray を指定することも可能)
             device (str): 音声合成時に利用するデバイス (cpu, cuda, mps など)
@@ -353,7 +353,7 @@ class TTSModelHolder:
     def __init__(self, model_root_dir: Path, device: str) -> None:
         """
         Style-Bert-Vits2 の音声合成モデルを管理するクラスを初期化する。
-        音声合成モデルは下記のように配置されていることを前提とする (.safetensors, .avim のファイル名は自由) 。
+        音声合成モデルは下記のように配置されていることを前提とする (.safetensors / .aivm のファイル名は自由) 。
         ```
         model_root_dir
         ├── model-name-1
